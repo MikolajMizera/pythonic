@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pythonic-evidence"
+version = "0.1.0"
+description = "Small experiments in attention and biomedical evidence."
+requires-python = ">=3.12"
+dependencies = ["torch>=2.5,<3", "numpy>=2,<3", "matplotlib>=3.9,<4"]
+
+[project.optional-dependencies]
+biomedical = ["transformers>=4.46,<6", "huggingface-hub>=0.26,<2"]
+serving = ["fastapi>=0.115,<1", "uvicorn>=0.30,<1"]
+notebooks = ["ipykernel>=6,<8", "nbclient>=0.10,<1", "nbformat>=5.10,<6"]
+dev = ["pytest>=8,<10", "httpx>=0.27,<1", "ruff>=0.9,<1", "mypy>=1.13,<2"]
+
+[project.scripts]
+pythonic = "pythonic.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.mypy]
+python_version = "3.12"
+check_untyped_defs = true
+disallow_untyped_defs = true
+ignore_missing_imports = true
+files = ["src/pythonic"]
