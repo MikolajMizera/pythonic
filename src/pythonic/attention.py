@@ -14,25 +14,30 @@ def causal_attention(query: Tensor, key: Tensor, value: Tensor, offset: int = 0)
 
 
 class Attention(nn.Module):
-    def __init__(self, width: int, heads: int) -> None:
+    def __init__(self, width: int, heads: int, kv_heads: int | None = None) -> None:
         super().__init__()
         if width <= 0 or heads <= 0 or width % heads:
             raise ValueError("Width must be positive and divisible by the head count.")
         self.heads = heads
+        self.kv_heads = heads if kv_heads is None else kv_heads
+        if self.kv_heads not in (1, heads):
+            raise ValueError("Use one KV head or one per query head.")
         self.head_dim = width // heads
         self.query = nn.Linear(width, width, bias=False)
-        self.key = nn.Linear(width, width, bias=False)
-        self.value = nn.Linear(width, width, bias=False)
+        self.key = nn.Linear(width, self.kv_heads * self.head_dim, bias=False)
+        self.value = nn.Linear(width, self.kv_heads * self.head_dim, bias=False)
         self.output = nn.Linear(width, width, bias=False)
 
-    def split_heads(self, projected: Tensor) -> Tensor:
+    def split_heads(self, projected: Tensor, heads: int) -> Tensor:
         batch, length, _ = projected.shape
-        return projected.view(batch, length, self.heads, self.head_dim).transpose(1, 2)
+        return projected.view(batch, length, heads, self.head_dim).transpose(1, 2)
 
     def forward(self, inputs: Tensor) -> Tensor:
-        query = self.split_heads(self.query(inputs))
-        key = self.split_heads(self.key(inputs))
-        value = self.split_heads(self.value(inputs))
+        query = self.split_heads(self.query(inputs), self.heads)
+        key = self.split_heads(self.key(inputs), self.kv_heads)
+        value = self.split_heads(self.value(inputs), self.kv_heads)
+        key = key.repeat_interleave(self.heads // self.kv_heads, dim=1)
+        value = value.repeat_interleave(self.heads // self.kv_heads, dim=1)
         attended = causal_attention(query, key, value)
         merged = attended.transpose(1, 2).contiguous().flatten(2)
         return self.output(merged)
