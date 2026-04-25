@@ -4,6 +4,15 @@ import torch
 from torch import Tensor, nn
 
 
+def kv_cache_bytes(
+    layers: int, batch: int, length: int, kv_heads: int, head_dim: int, element_bytes: int = 4
+) -> int:
+    dimensions = (layers, batch, length, kv_heads, head_dim, element_bytes)
+    if any(dimension < 0 for dimension in dimensions):
+        raise ValueError("Cache dimensions cannot be negative.")
+    return 2 * math.prod(dimensions)
+
+
 def causal_attention(query: Tensor, key: Tensor, value: Tensor, offset: int = 0) -> Tensor:
     scores = query @ key.transpose(-2, -1) / math.sqrt(query.size(-1))
     rows = torch.arange(query.size(-2), device=query.device) + offset
