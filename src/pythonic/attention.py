@@ -29,8 +29,8 @@ class Attention(nn.Module):
             raise ValueError("Width must be positive and divisible by the head count.")
         self.heads = heads
         self.kv_heads = heads if kv_heads is None else kv_heads
-        if self.kv_heads not in (1, heads):
-            raise ValueError("Use one KV head or one per query head.")
+        if self.kv_heads <= 0 or heads % self.kv_heads:
+            raise ValueError("KV heads must divide query heads.")
         self.head_dim = width // heads
         self.query = nn.Linear(width, width, bias=False)
         self.key = nn.Linear(width, self.kv_heads * self.head_dim, bias=False)

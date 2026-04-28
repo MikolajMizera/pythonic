@@ -1,3 +1,4 @@
+import pytest
 import torch
 from torch.nn.functional import scaled_dot_product_attention
 
@@ -34,3 +35,17 @@ def test_multi_query_matches_tied_multihead_weights() -> None:
         repeated.value.weight.copy_(shared.value.weight.repeat(4, 1))
     inputs = torch.randn(2, 7, 16)
     torch.testing.assert_close(shared(inputs), repeated(inputs))
+
+
+def test_grouped_query_matches_repeated_key_value_weights() -> None:
+    grouped = Attention(24, 6, kv_heads=2)
+    full = Attention(24, 6)
+    with torch.no_grad():
+        full.query.weight.copy_(grouped.query.weight)
+        full.output.weight.copy_(grouped.output.weight)
+        for target, source in ((full.key, grouped.key), (full.value, grouped.value)):
+            target.weight.copy_(source.weight.view(2, 4, 24).repeat_interleave(3, 0).flatten(0, 1))
+    inputs = torch.randn(1, 9, 24)
+    torch.testing.assert_close(grouped(inputs), full(inputs))
+    with pytest.raises(ValueError):
+        Attention(24, 6, kv_heads=4)
