@@ -7,6 +7,8 @@ def main() -> None:
     commands = parser.add_subparsers(dest="command", required=True)
     fetch = commands.add_parser("download")
     fetch.add_argument("--directory", type=Path, default=Path("data"))
+    inspect = commands.add_parser("inspect-data")
+    inspect.add_argument("--data", type=Path, default=Path("data/pubmedqa.json"))
     bench = commands.add_parser("benchmark")
     bench.add_argument("--device", default="cpu")
     bench.add_argument("--length", type=int, default=128)
@@ -23,6 +25,15 @@ def main() -> None:
         from pythonic.experiments import attention_benchmark, save_json
 
         save_json(args.output, attention_benchmark(args.device, args.length, args.repeats))
+    elif args.command == "inspect-data":
+        from collections import Counter
+
+        from pythonic.data import load_papers, split_papers
+
+        split = split_papers(load_papers(args.data))
+        for name in ("train", "validation", "test"):
+            papers = getattr(split, name)
+            print(name, len(papers), dict(Counter(paper.decision for paper in papers)))
 
 
 if __name__ == "__main__":
