@@ -21,3 +21,9 @@ Data: [PubMedQA](https://github.com/pubmedqa/pubmedqa), Jin et al., EMNLP 2019.
 The download is pinned and checked against SHA-256. Splits are local experiments,
 not the official leaderboard split. Conclusions and existing predictions are excluded.
 Offline fixtures are synthetic.
+
+```sh
+pythonic train-decoder --smoke
+pythonic train-decoder --device cuda --steps 1000
+pythonic train-decoder --device cuda --steps 2000 --resume artifacts/decoder/decoder.pt
+```
