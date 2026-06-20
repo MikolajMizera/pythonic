@@ -43,8 +43,9 @@ class Block(nn.Module):
 
 
 class Decoder(nn.Module):
-    def __init__(self, config: DecoderConfig = DecoderConfig()) -> None:
+    def __init__(self, config: DecoderConfig | None = None) -> None:
         super().__init__()
+        config = config or DecoderConfig()
         self.config = config
         self.embedding = nn.Embedding(config.vocabulary, config.width)
         self.position = nn.Embedding(config.context, config.width)

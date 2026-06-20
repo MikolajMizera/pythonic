@@ -22,6 +22,13 @@ def main() -> None:
     train.add_argument("--accumulation", type=int, default=16)
     train.add_argument("--resume", type=Path)
     train.add_argument("--smoke", action="store_true")
+    evidence = commands.add_parser("train-evidence")
+    evidence.add_argument("--data", type=Path, default=Path("data/pubmedqa.json"))
+    evidence.add_argument("--output", type=Path, default=Path("artifacts/evidence"))
+    evidence.add_argument("--device", default="cpu")
+    evidence.add_argument("--steps", type=int, default=200)
+    evidence.add_argument("--accumulation", type=int, default=16)
+    evidence.add_argument("--budget", type=int, default=256)
     args = parser.parse_args()
     if args.command == "download":
         from pythonic.data import download_pubmedqa, load_papers, save_split, split_papers
@@ -66,6 +73,22 @@ def main() -> None:
             train_papers, validation, model_config, config, args.output, args.resume
         )
         print("validation loss:", report["validation_loss"])
+    elif args.command == "train-evidence":
+        import torch
+
+        from pythonic.biomedical import load_biomedical, train_evidence
+        from pythonic.data import load_papers, split_papers
+        from pythonic.training import TrainConfig
+
+        torch.manual_seed(42)
+        torch.set_num_threads(4)
+        split = split_papers(load_papers(args.data))
+        model, tokenizer = load_biomedical(args.device)
+        config = TrainConfig(steps=args.steps, accumulation=args.accumulation, device=args.device)
+        report = train_evidence(
+            model, tokenizer, split.train, split.validation, config, args.output, args.budget
+        )
+        print(report["validation"])
 
 
 if __name__ == "__main__":

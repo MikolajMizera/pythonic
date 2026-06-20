@@ -72,11 +72,11 @@ def attention_benchmark(
 
     torch.manual_seed(42)
     target = torch.device(device)
-    tensors = [torch.randn(1, 4, length, 32, device=target) for _ in range(3)]
+    query, key, value = [torch.randn(1, 4, length, 32, device=target) for _ in range(3)]
     operations: dict[str, Callable[[], object]] = {
-        "dense": lambda: causal_attention(*tensors),
-        "tiled": lambda: tiled_attention(*tensors),
-        "sdpa": lambda: scaled_dot_product_attention(*tensors, is_causal=True),
+        "dense": lambda: causal_attention(query, key, value),
+        "tiled": lambda: tiled_attention(query, key, value),
+        "sdpa": lambda: scaled_dot_product_attention(query, key, value, is_causal=True),
     }
     with torch.inference_mode():
         timings = {
