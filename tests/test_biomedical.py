@@ -1,8 +1,10 @@
+from dataclasses import replace
+
 import torch
 from transformers import BertConfig, BertModel
 
 from pythonic.biomedical import EvidenceClassifier, evidence_text
-from pythonic.data import fixtures
+from pythonic.data import Section, fixtures
 
 
 def test_classifier_only_trains_adapters_and_head() -> None:
@@ -26,3 +28,16 @@ def test_classifier_only_trains_adapters_and_head() -> None:
 
 def test_question_only_has_no_evidence() -> None:
     assert evidence_text(fixtures()[0], "question_only") == ""
+
+
+def test_evidence_order_preserves_text_without_labels() -> None:
+    paper = replace(
+        fixtures()[0],
+        sections=(
+            Section("0", 0, "BACKGROUND", "Background"),
+            Section("0", 1, "RESULTS", "Result"),
+        ),
+    )
+    assert evidence_text(paper, "first") == "Background"
+    assert evidence_text(paper, "results_first") == "Result\nBackground"
+    assert evidence_text(paper, "original") == "Background\nResult"

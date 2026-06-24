@@ -10,6 +10,7 @@ from torch.nn import functional as F
 from pythonic.data import DATA_REVISION, DATA_SHA256, DECISIONS, Decision, Paper
 from pythonic.experiments import metadata, save_json
 from pythonic.lora import inject_lora
+from pythonic.metrics import classification_metrics
 from pythonic.training import TrainConfig
 
 MODEL_ID = "microsoft/BiomedNLP-BiomedBERT-base-uncased-abstract"
@@ -109,25 +110,7 @@ def evaluate_classifier(
     predictions = [
         predict_evidence(model, tokenizer, paper, budget, strategy).decision for paper in papers
     ]
-    accuracy = sum(
-        prediction == paper.decision for prediction, paper in zip(predictions, papers, strict=True)
-    ) / len(papers)
-    scores = []
-    for label in DECISIONS:
-        tp = sum(
-            prediction == label and paper.decision == label
-            for prediction, paper in zip(predictions, papers, strict=True)
-        )
-        fp = sum(
-            prediction == label and paper.decision != label
-            for prediction, paper in zip(predictions, papers, strict=True)
-        )
-        fn = sum(
-            prediction != label and paper.decision == label
-            for prediction, paper in zip(predictions, papers, strict=True)
-        )
-        scores.append(2 * tp / (2 * tp + fp + fn) if 2 * tp + fp + fn else 0.0)
-    return {"accuracy": accuracy, "macro_f1": sum(scores) / len(scores)}
+    return classification_metrics(predictions, [paper.decision for paper in papers])
 
 
 def train_evidence(
