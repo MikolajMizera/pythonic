@@ -29,6 +29,11 @@ def main() -> None:
     evidence.add_argument("--steps", type=int, default=200)
     evidence.add_argument("--accumulation", type=int, default=16)
     evidence.add_argument("--budget", type=int, default=256)
+    evaluate = commands.add_parser("evaluate-evidence")
+    evaluate.add_argument("--data", type=Path, default=Path("data/pubmedqa.json"))
+    evaluate.add_argument("--checkpoint", type=Path, default=Path("artifacts/evidence/adapters.pt"))
+    evaluate.add_argument("--device", default="cpu")
+    evaluate.add_argument("--output", type=Path, default=Path("artifacts/budgets.json"))
     args = parser.parse_args()
     if args.command == "download":
         from pythonic.data import download_pubmedqa, load_papers, save_split, split_papers
@@ -89,6 +94,23 @@ def main() -> None:
             model, tokenizer, split.train, split.validation, config, args.output, args.budget
         )
         print(report["validation"])
+    elif args.command == "evaluate-evidence":
+        import hashlib
+
+        import torch
+
+        from pythonic.biomedical import load_evidence_checkpoint
+        from pythonic.budgets import budget_experiment
+        from pythonic.data import load_papers, split_papers
+        from pythonic.experiments import save_json
+
+        torch.set_num_threads(4)
+        split = split_papers(load_papers(args.data))
+        model, tokenizer = load_evidence_checkpoint(args.checkpoint, args.device)
+        report = budget_experiment(model, tokenizer, split.test)
+        report["adapter_sha256"] = hashlib.sha256(args.checkpoint.read_bytes()).hexdigest()
+        save_json(args.output, report)
+        print(args.output)
 
 
 if __name__ == "__main__":

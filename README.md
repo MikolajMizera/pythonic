@@ -27,6 +27,7 @@ pythonic train-decoder --smoke
 pythonic train-decoder --device cuda --steps 1000
 pythonic train-decoder --device cuda --steps 2000 --resume artifacts/decoder/decoder.pt
 HF_HOME=data/hf pythonic train-evidence --device cuda --steps 200 --budget 256
+HF_HOME=data/hf pythonic evaluate-evidence --device cuda
 ```
 
 BiomedBERT downloads on the first run. Its base stays frozen; only adapters and the
