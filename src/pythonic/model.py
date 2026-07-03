@@ -3,7 +3,7 @@ from dataclasses import dataclass
 import torch
 from torch import Tensor, nn
 
-from pythonic.attention import Attention
+from pythonic.attention import Attention, KVCache
 
 
 @dataclass(frozen=True)
@@ -41,6 +41,11 @@ class Block(nn.Module):
         inputs = inputs + self.attention(self.attention_norm(inputs))
         return inputs + self.mlp(self.mlp_norm(inputs))
 
+    def forward_cached(self, inputs: Tensor, cache: KVCache | None) -> tuple[Tensor, KVCache]:
+        attended, updated = self.attention.forward_cached(self.attention_norm(inputs), cache)
+        inputs = inputs + attended
+        return inputs + self.mlp(self.mlp_norm(inputs)), updated
+
 
 class Decoder(nn.Module):
     def __init__(self, config: DecoderConfig | None = None) -> None:
@@ -71,6 +76,25 @@ class Decoder(nn.Module):
         for block in self.blocks:
             hidden = block(hidden)
         return self.output(self.norm(hidden))
+
+    def decode(
+        self, tokens: Tensor, caches: tuple[KVCache, ...] | None = None
+    ) -> tuple[Tensor, tuple[KVCache, ...]]:
+        offset = 0
+        if caches is not None:
+            if len(caches) != self.config.layers or len({cache.length for cache in caches}) != 1:
+                raise ValueError("Every decoder layer needs a cache of equal length.")
+            offset = caches[0].length
+        length = tokens.size(1)
+        if not 0 < length or offset + length > self.config.context:
+            raise ValueError("Cached token length must fit the model context.")
+        positions = torch.arange(offset, offset + length, device=tokens.device)
+        hidden = self.embedding(tokens) + self.position(positions)
+        updated = []
+        for index, block in enumerate(self.blocks):
+            hidden, cache = block.forward_cached(hidden, None if caches is None else caches[index])
+            updated.append(cache)
+        return self.output(self.norm(hidden)), tuple(updated)
 
 
 class ByteTokenizer:

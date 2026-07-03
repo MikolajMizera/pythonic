@@ -1,7 +1,22 @@
 import math
+from dataclasses import dataclass
 
 import torch
 from torch import Tensor, nn
+
+
+@dataclass(frozen=True)
+class KVCache:
+    key: Tensor
+    value: Tensor
+
+    @property
+    def length(self) -> int:
+        return self.key.size(-2)
+
+    @property
+    def bytes(self) -> int:
+        return sum(tensor.numel() * tensor.element_size() for tensor in (self.key, self.value))
 
 
 def kv_cache_bytes(
@@ -42,11 +57,24 @@ class Attention(nn.Module):
         return projected.view(batch, length, heads, self.head_dim).transpose(1, 2)
 
     def forward(self, inputs: Tensor) -> Tensor:
+        return self.forward_cached(inputs)[0]
+
+    def forward_cached(
+        self, inputs: Tensor, cache: KVCache | None = None
+    ) -> tuple[Tensor, KVCache]:
         query = self.split_heads(self.query(inputs), self.heads)
         key = self.split_heads(self.key(inputs), self.kv_heads)
         value = self.split_heads(self.value(inputs), self.kv_heads)
+        offset = 0
+        if cache is not None:
+            if cache.key.shape != cache.value.shape or cache.key.shape[:2] != key.shape[:2]:
+                raise ValueError("Cache shape does not match this request.")
+            offset = cache.length
+            key = torch.cat((cache.key, key), dim=-2)
+            value = torch.cat((cache.value, value), dim=-2)
+        updated = KVCache(key, value)
         key = key.repeat_interleave(self.heads // self.kv_heads, dim=1)
         value = value.repeat_interleave(self.heads // self.kv_heads, dim=1)
-        attended = causal_attention(query, key, value)
+        attended = causal_attention(query, key, value, offset)
         merged = attended.transpose(1, 2).contiguous().flatten(2)
-        return self.output(merged)
+        return self.output(merged), updated
