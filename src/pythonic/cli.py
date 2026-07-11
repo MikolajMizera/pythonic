@@ -34,6 +34,12 @@ def main() -> None:
     evaluate.add_argument("--checkpoint", type=Path, default=Path("artifacts/evidence/adapters.pt"))
     evaluate.add_argument("--device", default="cpu")
     evaluate.add_argument("--output", type=Path, default=Path("artifacts/budgets.json"))
+    generate = commands.add_parser("generate")
+    generate.add_argument("--checkpoint", type=Path, default=Path("artifacts/decoder/decoder.pt"))
+    generate.add_argument("--device", default="cpu")
+    generate.add_argument("--prompt", default="The trial ")
+    generate.add_argument("--max-new", type=int, default=32)
+    generate.add_argument("--temperature", type=float, default=0.0)
     args = parser.parse_args()
     if args.command == "download":
         from pythonic.data import download_pubmedqa, load_papers, save_split, split_papers
@@ -111,6 +117,18 @@ def main() -> None:
         report["adapter_sha256"] = hashlib.sha256(args.checkpoint.read_bytes()).hexdigest()
         save_json(args.output, report)
         print(args.output)
+    elif args.command == "generate":
+        from pythonic.generation import generate_tokens
+        from pythonic.model import ByteTokenizer
+        from pythonic.training import load_decoder
+
+        model = load_decoder(args.checkpoint, args.device)
+        output = list(
+            generate_tokens(
+                model, ByteTokenizer.encode(args.prompt), args.max_new, args.temperature
+            )
+        )
+        print(args.prompt + ByteTokenizer.decode(output))
 
 
 if __name__ == "__main__":
