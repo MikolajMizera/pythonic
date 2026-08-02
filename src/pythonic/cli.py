@@ -40,6 +40,11 @@ def main() -> None:
     generate.add_argument("--prompt", default="The trial ")
     generate.add_argument("--max-new", type=int, default=32)
     generate.add_argument("--temperature", type=float, default=0.0)
+    serve = commands.add_parser("serve")
+    serve.add_argument("--checkpoint", type=Path, default=Path("artifacts/decoder/decoder.pt"))
+    serve.add_argument("--device", default="cpu")
+    serve.add_argument("--port", type=int, default=8000)
+    serve.add_argument("--concurrency", type=int, default=2)
     args = parser.parse_args()
     if args.command == "download":
         from pythonic.data import download_pubmedqa, load_papers, save_split, split_papers
@@ -129,6 +134,17 @@ def main() -> None:
             )
         )
         print(args.prompt + ByteTokenizer.decode(output))
+    elif args.command == "serve":
+        import uvicorn
+
+        from pythonic.serving import create_app
+        from pythonic.training import load_decoder
+
+        uvicorn.run(
+            create_app(load_decoder(args.checkpoint, args.device), args.concurrency),
+            host="127.0.0.1",
+            port=args.port,
+        )
 
 
 if __name__ == "__main__":

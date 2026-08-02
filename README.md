@@ -33,3 +33,9 @@ HF_HOME=data/hf pythonic evaluate-evidence --device cuda
 
 BiomedBERT downloads on the first run. Its base stays frozen; only adapters and the
 classification head are saved. GPU measurements are pending.
+
+```sh
+pythonic serve --checkpoint artifacts/decoder/decoder.pt
+curl -N http://127.0.0.1:8000/generate -H 'Content-Type: application/json' \
+  -d '{"prompt":"The trial ","max_new":32}'
+```

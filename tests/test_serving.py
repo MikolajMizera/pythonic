@@ -1,4 +1,6 @@
 import asyncio
+import threading
+from collections.abc import Iterator
 
 import pytest
 from fastapi import HTTPException
@@ -56,6 +58,38 @@ def test_disconnected_client_stops_and_returns_capacity() -> None:
             chunk
             async for chunk in service.stream(GenerationRequest(prompt="Trial"), slot, disconnected)
         ] == []
+        assert service.slots.qsize() == 1
+
+    asyncio.run(run())
+
+
+def test_cancelled_worker_keeps_slot_until_thread_finishes(monkeypatch: pytest.MonkeyPatch) -> None:
+    started = threading.Event()
+    release = threading.Event()
+
+    def slow_tokens(*args: object, **kwargs: object) -> Iterator[int]:
+        started.set()
+        assert release.wait(timeout=2)
+        yield 65
+
+    monkeypatch.setattr("pythonic.serving.generate_tokens", slow_tokens)
+
+    async def run() -> None:
+        service = GenerationService(model(), concurrency=1)
+
+        async def connected() -> bool:
+            return False
+
+        stream = service.stream(GenerationRequest(prompt="Trial"), service.acquire(), connected)
+        task = asyncio.create_task(anext(stream))
+        while not started.is_set():
+            await asyncio.sleep(0.001)
+        task.cancel()
+        await asyncio.sleep(0.01)
+        assert service.slots.empty()
+        release.set()
+        with pytest.raises(asyncio.CancelledError):
+            await task
         assert service.slots.qsize() == 1
 
     asyncio.run(run())
