@@ -7,7 +7,7 @@ name = "pythonic-evidence"
 version = "0.1.0"
 description = "Small experiments in attention and biomedical evidence."
 requires-python = ">=3.12"
-dependencies = ["torch>=2.5,<3", "numpy>=2,<3", "matplotlib>=3.9,<4"]
+dependencies = ["torch>=2.5,<3", "numpy>=2,<3", "matplotlib>=3.9,<4", "pydantic>=2,<3"]
 
 [project.optional-dependencies]
 biomedical = ["transformers>=4.46,<6", "huggingface-hub>=0.26,<2"]
