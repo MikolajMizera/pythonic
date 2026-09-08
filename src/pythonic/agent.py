@@ -1,6 +1,7 @@
 import json
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Literal
 
 from pythonic.tools import EvidenceTools, ToolCall, ToolResult
@@ -95,10 +96,22 @@ class Agent:
             state.status, state.reason = "stopped", "Tool error limit reached."
         return state
 
-    def run(self, question: str) -> AgentState:
+    def run(self, question: str, checkpoint: Path | None = None) -> AgentState:
         if not question.strip():
             raise ValueError("Question cannot be empty.")
         state = AgentState(question)
+        return self.continue_run(state, checkpoint)
+
+    def resume(self, checkpoint: Path) -> AgentState:
+        from pythonic.checkpoints import load_checkpoint
+
+        return self.continue_run(load_checkpoint(checkpoint, self.tools.source_digest), checkpoint)
+
+    def continue_run(self, state: AgentState, checkpoint: Path | None = None) -> AgentState:
+        from pythonic.checkpoints import save_checkpoint
+
         while state.status == "running":
             self.step(state)
+            if checkpoint is not None:
+                save_checkpoint(state, checkpoint, self.tools.source_digest)
         return state

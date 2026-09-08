@@ -1,6 +1,7 @@
+from test_tools import make_tools
+
 from pythonic.agent import Agent, Finish, SearchReadClassify
 from pythonic.tools import ToolCall
-from test_tools import make_tools
 
 
 def test_scripted_agent_finishes_with_verified_classification() -> None:

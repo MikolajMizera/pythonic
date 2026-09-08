@@ -1,3 +1,5 @@
+import hashlib
+import json
 from collections.abc import Callable, Sequence
 from dataclasses import asdict, dataclass
 from typing import Any
@@ -60,6 +62,11 @@ class EvidenceTools:
             raise ValueError("Section identities must be unique.")
         self.predict, self.count = predict, count
         self.allowed = allowed
+        self.source_digest = hashlib.sha256(
+            json.dumps(
+                [asdict(self.sources[key]) for key in sorted(self.sources)], sort_keys=True
+            ).encode()
+        ).hexdigest()
         self.arguments: dict[str, type[Arguments]] = {
             "search": SearchArguments,
             "read_section": ReadArguments,
