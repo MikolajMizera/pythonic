@@ -45,6 +45,14 @@ def main() -> None:
     serve.add_argument("--device", default="cpu")
     serve.add_argument("--port", type=int, default=8000)
     serve.add_argument("--concurrency", type=int, default=2)
+    ask = commands.add_parser("ask")
+    ask.add_argument("question", nargs="?")
+    ask.add_argument("--data", type=Path, default=Path("data/pubmedqa.json"))
+    ask.add_argument("--checkpoint", type=Path, default=Path("artifacts/evidence/adapters.pt"))
+    ask.add_argument("--state", type=Path, default=Path("artifacts/agent.json"))
+    ask.add_argument("--device", default="cpu")
+    ask.add_argument("--budget", type=int, default=256)
+    ask.add_argument("--resume", action="store_true")
     args = parser.parse_args()
     if args.command == "download":
         from pythonic.data import download_pubmedqa, load_papers, save_split, split_papers
@@ -144,6 +152,35 @@ def main() -> None:
             create_app(load_decoder(args.checkpoint, args.device), args.concurrency),
             host="127.0.0.1",
             port=args.port,
+        )
+    elif args.command == "ask":
+        import json
+
+        import torch
+
+        from pythonic.agent import Agent, SearchReadClassify
+        from pythonic.biomedical import load_evidence_checkpoint, predict_text
+        from pythonic.data import load_papers
+        from pythonic.retrieval import BM25
+        from pythonic.tools import EvidenceTools
+
+        if not args.resume and not args.question:
+            parser.error("ask needs a question or --resume")
+        torch.set_num_threads(4)
+        model, tokenizer = load_evidence_checkpoint(args.checkpoint, args.device)
+        sections = [section for paper in load_papers(args.data) for section in paper.sections]
+        tools = EvidenceTools(
+            BM25(sections),
+            sections,
+            lambda q, c, b: predict_text(model, tokenizer, q, c, b),
+            lambda text: len(tokenizer.encode(text, add_special_tokens=False)),
+        )
+        agent = Agent(tools, SearchReadClassify(args.budget))
+        state = agent.resume(args.state) if args.resume else agent.run(args.question, args.state)
+        print(
+            json.dumps(
+                {"status": state.status, "answer": state.answer, "reason": state.reason}, indent=2
+            )
         )
 
 

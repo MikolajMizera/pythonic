@@ -38,4 +38,9 @@ classification head are saved. GPU measurements are pending.
 pythonic serve --checkpoint artifacts/decoder/decoder.pt
 curl -N http://127.0.0.1:8000/generate -H 'Content-Type: application/json' \
   -d '{"prompt":"The trial ","max_new":32}'
+HF_HOME=data/hf pythonic ask 'Does treatment reduce fever?' --device cuda
+HF_HOME=data/hf pythonic ask --resume --device cuda
 ```
+
+Agent checkpoints are local JSON files bound to the source index. A crash between
+tool completion and checkpoint writing can replay the last read-only operation.

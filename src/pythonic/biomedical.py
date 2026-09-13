@@ -87,9 +87,23 @@ def predict_evidence(
     budget: int = 256,
     strategy: Strategy = "original",
 ) -> EvidencePrediction:
+    return predict_text(model, tokenizer, paper.question, evidence_text(paper, strategy), budget)
+
+
+@torch.no_grad()
+def predict_text(
+    model: EvidenceClassifier,
+    tokenizer: Any,
+    question: str,
+    context: str,
+    budget: int = 256,
+) -> EvidencePrediction:
+    if not 8 <= budget <= 512:
+        raise ValueError("Token budget must be between 8 and 512.")
     model.eval()
     device = next(model.parameters()).device
-    inputs = encode_evidence(tokenizer, (paper,), budget, device, strategy)
+    encoded = tokenizer(question, context, truncation=True, max_length=budget, return_tensors="pt")
+    inputs = {name: value.to(device) for name, value in encoded.items()}
     probabilities = model(inputs).softmax(-1)[0]
     index = int(probabilities.argmax())
     return EvidencePrediction(
