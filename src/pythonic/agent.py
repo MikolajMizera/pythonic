@@ -1,10 +1,12 @@
 import json
 from collections.abc import Callable
+from contextlib import nullcontext
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal
 
 from pythonic.tools import EvidenceTools, ToolCall, ToolResult
+from pythonic.tracing import TraceWriter
 
 
 @dataclass(frozen=True)
@@ -60,11 +62,13 @@ class Agent:
         select: Callable[[AgentState], ToolCall | Finish],
         max_turns: int = 8,
         max_errors: int = 3,
+        trace: TraceWriter | None = None,
     ) -> None:
         if min(max_turns, max_errors) <= 0:
             raise ValueError("Agent limits must be positive.")
         self.tools, self.select = tools, select
         self.max_turns, self.max_errors = max_turns, max_errors
+        self.trace = trace
 
     def step(self, state: AgentState) -> AgentState:
         if state.status != "running":
@@ -72,7 +76,8 @@ class Agent:
         if len(state.calls) >= self.max_turns:
             state.status, state.reason = "stopped", "Turn limit reached."
             return state
-        action = self.select(state)
+        with self.trace.span("select", {"turn": len(state.calls)}) if self.trace else nullcontext():
+            action = self.select(state)
         if isinstance(action, Finish):
             classified = [
                 result
@@ -89,7 +94,12 @@ class Agent:
         if signature in previous or action.call_id in {call.call_id for call in state.calls}:
             state.status, state.reason = "stopped", "Repeated action or call ID."
             return state
-        result = self.tools.execute(action)
+        attributes = {"call_id": action.call_id, "tool": action.name}
+        with (
+            self.trace.span("tool", attributes) if self.trace else nullcontext(attributes) as values
+        ):
+            result = self.tools.execute(action)
+            values["error"] = result.error
         state.calls.append(action)
         state.observations.append(result)
         if sum(item.error is not None for item in state.observations) >= self.max_errors:

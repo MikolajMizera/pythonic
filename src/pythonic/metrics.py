@@ -4,7 +4,7 @@ from pythonic.data import DECISIONS, Decision
 
 
 def classification_metrics(
-    predictions: Sequence[Decision], labels: Sequence[Decision]
+    predictions: Sequence[Decision | None], labels: Sequence[Decision]
 ) -> dict[str, float]:
     if not labels or len(predictions) != len(labels):
         raise ValueError("Predictions and labels must have equal, nonzero lengths.")
