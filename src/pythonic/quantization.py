@@ -6,6 +6,10 @@ from torch.nn import functional as F
 
 
 class Int8Linear(nn.Module):
+    scale: Tensor
+    codes: Tensor
+    bias: Tensor | None
+
     def __init__(self, source: nn.Linear) -> None:
         super().__init__()
         weight = source.weight.detach().float()

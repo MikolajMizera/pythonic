@@ -96,12 +96,12 @@ class EvidenceTools:
             elif isinstance(parsed, ReadArguments):
                 value = asdict(self.sources[(parsed.pmid, parsed.section)])
             elif isinstance(parsed, ClassifyArguments):
-                hits = [
+                classification_hits = [
                     Hit(self.sources[(ref.pmid, ref.section)], 1.0) for ref in parsed.references
                 ]
                 answer = answer_question(
                     parsed.question,
-                    hits,
+                    classification_hits,
                     lambda question, context: self.predict(question, context, parsed.budget),
                     parsed.budget,
                     self.count,

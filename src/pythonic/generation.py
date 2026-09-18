@@ -1,4 +1,4 @@
-from collections.abc import Iterator
+from collections.abc import Generator
 
 import torch
 from torch import Tensor
@@ -41,7 +41,7 @@ def generate_tokens(
     temperature: float = 0.0,
     chunk_size: int = 32,
     seed: int = 42,
-) -> Iterator[int]:
+) -> Generator[int, None, None]:
     if not prompt or max_new < 0 or len(prompt) + max_new > model.config.context:
         raise ValueError("Prompt and output must fit the context, with nonnegative output length.")
     if max_new == 0:

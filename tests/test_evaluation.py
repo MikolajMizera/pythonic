@@ -2,12 +2,12 @@ import json
 from pathlib import Path
 
 import pytest
+from test_tools import make_tools
 
 from pythonic.agent import Agent, SearchReadClassify
 from pythonic.data import fixtures
 from pythonic.evaluation import evaluate_agent
 from pythonic.tracing import TraceWriter
-from test_tools import make_tools
 
 
 def test_agent_evaluation_separates_provenance_and_correctness(tmp_path: Path) -> None:

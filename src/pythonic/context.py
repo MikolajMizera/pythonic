@@ -2,7 +2,7 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 
 from pythonic.biomedical import EvidencePrediction
-from pythonic.data import Decision, Section
+from pythonic.data import DECISIONS, Decision, Section
 from pythonic.retrieval import Hit
 
 
@@ -85,6 +85,6 @@ def answer_question(
     if not context.citations:
         return EvidenceAnswer(None, None, (), "No evidence fits the budget.")
     result = predict(question, context.text)
-    if not 0 <= result.confidence <= 1:
-        raise ValueError("Confidence must be between zero and one.")
+    if result.decision not in DECISIONS or not 0 <= result.confidence <= 1:
+        raise ValueError("Classification decision or confidence is invalid.")
     return EvidenceAnswer(result.decision, result.confidence, context.citations)

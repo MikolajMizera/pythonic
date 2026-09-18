@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import cast
 
 import torch
 from torch import Tensor, nn
@@ -92,7 +93,9 @@ class Decoder(nn.Module):
         hidden = self.embedding(tokens) + self.position(positions)
         updated = []
         for index, block in enumerate(self.blocks):
-            hidden, cache = block.forward_cached(hidden, None if caches is None else caches[index])
+            hidden, cache = cast(Block, block).forward_cached(
+                hidden, None if caches is None else caches[index]
+            )
             updated.append(cache)
         return self.output(self.norm(hidden)), tuple(updated)
 

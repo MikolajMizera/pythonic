@@ -15,13 +15,14 @@ Embeddings = NDArray[np.float32]
 
 class BiomedicalEmbedder:
     def __init__(
-        self, encoder: nn.Module, tokenizer: Any, budget: int = 256, batch_size: int = 8
+        self, encoder: nn.Module, tokenizer: Any, width: int, budget: int = 256, batch_size: int = 8
     ) -> None:
         if not 8 <= budget <= 512 or batch_size <= 0:
             raise ValueError("Embedding budget or batch size is invalid.")
         self.encoder = encoder.requires_grad_(False).eval()
         self.tokenizer = tokenizer
         self.budget, self.batch_size = budget, batch_size
+        self.width = width
 
     @classmethod
     def load(cls, device: str = "cpu") -> "BiomedicalEmbedder":
@@ -29,12 +30,12 @@ class BiomedicalEmbedder:
 
         encoder = AutoModel.from_pretrained(MODEL_ID, revision=MODEL_REVISION).to(device)
         tokenizer = AutoTokenizer.from_pretrained(MODEL_ID, revision=MODEL_REVISION)
-        return cls(encoder, tokenizer)
+        return cls(encoder, tokenizer, encoder.config.hidden_size)
 
     @torch.inference_mode()
     def __call__(self, texts: Sequence[str]) -> Embeddings:
         if not texts:
-            return np.empty((0, self.encoder.config.hidden_size), dtype=np.float32)
+            return np.empty((0, self.width), dtype=np.float32)
         vectors = []
         device = next(self.encoder.parameters()).device
         for start in range(0, len(texts), self.batch_size):

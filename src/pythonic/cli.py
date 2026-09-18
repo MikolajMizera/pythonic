@@ -53,6 +53,16 @@ def main() -> None:
     ask.add_argument("--device", default="cpu")
     ask.add_argument("--budget", type=int, default=256)
     ask.add_argument("--resume", action="store_true")
+    ask.add_argument("--trace", type=Path, default=Path("artifacts/trace.jsonl"))
+    agent_eval = commands.add_parser("evaluate-agent")
+    agent_eval.add_argument("--data", type=Path, default=Path("data/pubmedqa.json"))
+    agent_eval.add_argument(
+        "--checkpoint", type=Path, default=Path("artifacts/evidence/adapters.pt")
+    )
+    agent_eval.add_argument("--device", default="cpu")
+    agent_eval.add_argument("--budget", type=int, default=256)
+    agent_eval.add_argument("--output", type=Path, default=Path("artifacts/agent-evaluation.json"))
+    agent_eval.add_argument("--trace", type=Path, default=Path("artifacts/evaluation-trace.jsonl"))
     args = parser.parse_args()
     if args.command == "download":
         from pythonic.data import download_pubmedqa, load_papers, save_split, split_papers
@@ -135,10 +145,10 @@ def main() -> None:
         from pythonic.model import ByteTokenizer
         from pythonic.training import load_decoder
 
-        model = load_decoder(args.checkpoint, args.device)
+        decoder = load_decoder(args.checkpoint, args.device)
         output = list(
             generate_tokens(
-                model, ByteTokenizer.encode(args.prompt), args.max_new, args.temperature
+                decoder, ByteTokenizer.encode(args.prompt), args.max_new, args.temperature
             )
         )
         print(args.prompt + ByteTokenizer.decode(output))
@@ -158,30 +168,32 @@ def main() -> None:
 
         import torch
 
-        from pythonic.agent import Agent, SearchReadClassify
-        from pythonic.biomedical import load_evidence_checkpoint, predict_text
-        from pythonic.data import load_papers
-        from pythonic.retrieval import BM25
-        from pythonic.tools import EvidenceTools
+        from pythonic.runtime import evidence_agent
 
         if not args.resume and not args.question:
             parser.error("ask needs a question or --resume")
         torch.set_num_threads(4)
-        model, tokenizer = load_evidence_checkpoint(args.checkpoint, args.device)
-        sections = [section for paper in load_papers(args.data) for section in paper.sections]
-        tools = EvidenceTools(
-            BM25(sections),
-            sections,
-            lambda q, c, b: predict_text(model, tokenizer, q, c, b),
-            lambda text: len(tokenizer.encode(text, add_special_tokens=False)),
-        )
-        agent = Agent(tools, SearchReadClassify(args.budget))
+        agent = evidence_agent(args.data, args.checkpoint, args.device, args.budget, args.trace)
         state = agent.resume(args.state) if args.resume else agent.run(args.question, args.state)
         print(
             json.dumps(
                 {"status": state.status, "answer": state.answer, "reason": state.reason}, indent=2
             )
         )
+
+    elif args.command == "evaluate-agent":
+        import torch
+
+        from pythonic.data import load_papers, split_papers
+        from pythonic.evaluation import evaluate_agent
+        from pythonic.experiments import save_json
+        from pythonic.runtime import evidence_agent
+
+        torch.set_num_threads(4)
+        agent = evidence_agent(args.data, args.checkpoint, args.device, args.budget, args.trace)
+        report = evaluate_agent(agent, split_papers(load_papers(args.data)).test)
+        save_json(args.output, report)
+        print(args.output)
 
 
 if __name__ == "__main__":
