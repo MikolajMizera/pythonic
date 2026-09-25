@@ -14,6 +14,15 @@ def main() -> None:
     bench.add_argument("--length", type=int, default=128)
     bench.add_argument("--repeats", type=int, default=10)
     bench.add_argument("--output", type=Path, default=Path("artifacts/attention.json"))
+    decode_bench = commands.add_parser("benchmark-generation")
+    decode_bench.add_argument(
+        "--checkpoint", type=Path, default=Path("artifacts/decoder/decoder.pt")
+    )
+    decode_bench.add_argument("--device", default="cpu")
+    decode_bench.add_argument("--prompt", default="The trial ")
+    decode_bench.add_argument("--max-new", type=int, default=16)
+    decode_bench.add_argument("--repeats", type=int, default=10)
+    decode_bench.add_argument("--output", type=Path, default=Path("artifacts/generation.json"))
     train = commands.add_parser("train-decoder")
     train.add_argument("--data", type=Path, default=Path("data/pubmedqa.json"))
     train.add_argument("--output", type=Path, default=Path("artifacts/decoder"))
@@ -192,6 +201,24 @@ def main() -> None:
         torch.set_num_threads(4)
         agent = evidence_agent(args.data, args.checkpoint, args.device, args.budget, args.trace)
         report = evaluate_agent(agent, split_papers(load_papers(args.data)).test)
+        save_json(args.output, report)
+        print(args.output)
+    elif args.command == "benchmark-generation":
+        import hashlib
+
+        import torch
+
+        from pythonic.benchmarks import generation_benchmark
+        from pythonic.experiments import save_json
+        from pythonic.model import ByteTokenizer
+        from pythonic.training import load_decoder
+
+        torch.set_num_threads(4)
+        decoder = load_decoder(args.checkpoint, args.device)
+        report = generation_benchmark(
+            decoder, ByteTokenizer.encode(args.prompt), args.max_new, args.repeats
+        )
+        report["checkpoint_sha256"] = hashlib.sha256(args.checkpoint.read_bytes()).hexdigest()
         save_json(args.output, report)
         print(args.output)
 
