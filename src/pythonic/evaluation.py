@@ -12,7 +12,7 @@ from pythonic.retrieval import retrieval_metrics
 def evaluate_agent(agent: Agent, papers: Sequence[Paper]) -> dict[str, Any]:
     if not papers:
         raise ValueError("Agent evaluation needs questions.")
-    rows = []
+    rows: list[dict[str, Any]] = []
     predictions = []
     for paper in papers:
         start = time.perf_counter()

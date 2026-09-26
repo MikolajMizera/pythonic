@@ -111,5 +111,5 @@ class EvidenceTools:
             else:
                 raise ValueError("Unsupported arguments.")
             return ToolResult(call.call_id, call.name, value=value)
-        except (ValidationError, ValueError, KeyError) as error:
+        except (ValidationError, ValueError, KeyError, RuntimeError) as error:
             return ToolResult(call.call_id, call.name, error=f"{type(error).__name__}: {error}")

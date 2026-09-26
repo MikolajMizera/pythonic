@@ -48,11 +48,12 @@ def benchmark(
 def metadata(device: torch.device, seed: int = 42) -> dict[str, Any]:
     return {
         "python": platform.python_version(),
-        "torch": torch.__version__,
+        "torch": str(torch.__version__),
+        "threads": torch.get_num_threads(),
         "device": str(device),
         "device_name": torch.cuda.get_device_name(device)
         if device.type == "cuda"
-        else platform.processor(),
+        else (platform.processor() or platform.machine()),
         "seed": seed,
     }
 

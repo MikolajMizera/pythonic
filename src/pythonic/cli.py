@@ -80,6 +80,9 @@ def main() -> None:
         save_split(split_papers(load_papers(path)), args.directory / "split.json")
         print(path)
     elif args.command == "benchmark":
+        import torch
+
+        torch.set_num_threads(4)
         from pythonic.experiments import attention_benchmark, save_json
 
         save_json(args.output, attention_benchmark(args.device, args.length, args.repeats))

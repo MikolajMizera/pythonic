@@ -94,7 +94,7 @@ class Agent:
         if signature in previous or action.call_id in {call.call_id for call in state.calls}:
             state.status, state.reason = "stopped", "Repeated action or call ID."
             return state
-        attributes = {"call_id": action.call_id, "tool": action.name}
+        attributes: dict[str, Any] = {"call_id": action.call_id, "tool": action.name}
         with (
             self.trace.span("tool", attributes) if self.trace else nullcontext(attributes) as values
         ):

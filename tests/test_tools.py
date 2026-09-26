@@ -56,3 +56,24 @@ def test_classification_uses_only_source_references() -> None:
         ).error
         is not None
     )
+
+
+def test_classifier_runtime_errors_become_tool_observations() -> None:
+    tools = make_tools()
+
+    def failed_model(question: str, context: str, budget: int) -> EvidencePrediction:
+        raise RuntimeError("Model execution failed.")
+
+    tools.predict = failed_model
+    result = tools.execute(
+        ToolCall(
+            "7",
+            "classify",
+            {
+                "question": "fever?",
+                "references": [{"pmid": "0", "section": 0}],
+                "budget": 100,
+            },
+        )
+    )
+    assert result.error == "RuntimeError: Model execution failed."

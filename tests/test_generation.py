@@ -26,3 +26,5 @@ def test_sampling_and_generation_are_reproducible_and_bounded() -> None:
         list(generate_tokens(model, [1] * 16, max_new=1))
     with pytest.raises(ValueError):
         sample_token(torch.tensor([float("nan")]))
+    with pytest.raises(ValueError):
+        sample_token(torch.tensor([1.0]), temperature=float("nan"))

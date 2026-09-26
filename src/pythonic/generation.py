@@ -1,3 +1,4 @@
+import math
 from collections.abc import Generator
 
 import torch
@@ -10,7 +11,12 @@ from pythonic.model import ByteTokenizer, Decoder
 def sample_token(
     logits: Tensor, temperature: float = 0.0, generator: torch.Generator | None = None
 ) -> int:
-    if temperature < 0 or logits.ndim != 1 or not torch.isfinite(logits).all():
+    if (
+        not math.isfinite(temperature)
+        or temperature < 0
+        or logits.ndim != 1
+        or not torch.isfinite(logits).all()
+    ):
         raise ValueError(
             "Sampling needs finite one-dimensional logits and nonnegative temperature."
         )
