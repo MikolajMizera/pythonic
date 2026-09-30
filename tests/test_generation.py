@@ -28,3 +28,9 @@ def test_sampling_and_generation_are_reproducible_and_bounded() -> None:
         sample_token(torch.tensor([float("nan")]))
     with pytest.raises(ValueError):
         sample_token(torch.tensor([1.0]), temperature=float("nan"))
+
+
+def test_eos_stops_without_yielding_a_special_token(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("pythonic.generation.sample_token", lambda *args: 257)
+    model = Decoder(DecoderConfig(width=16, layers=1, context=8))
+    assert list(generate_tokens(model, [1, 2], max_new=4)) == []
